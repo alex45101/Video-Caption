@@ -1,0 +1,67 @@
+[
+    {
+        "start": 1.6800000000000002,
+        "end": 2.54,
+        "word": " Audio"
+    },
+    {
+        "start": 2.54,
+        "end": 3.4,
+        "word": " testing,"
+    },
+    {
+        "start": 3.8,
+        "end": 4.04,
+        "word": " one,"
+    },
+    {
+        "start": 4.04,
+        "end": 4.38,
+        "word": " two,"
+    },
+    {
+        "start": 4.38,
+        "end": 4.9,
+        "word": " three,"
+    },
+    {
+        "start": 5.36,
+        "end": 5.82,
+        "word": " hello,"
+    },
+    {
+        "start": 6.32,
+        "end": 6.66,
+        "word": " this"
+    },
+    {
+        "start": 6.66,
+        "end": 7.28,
+        "word": " is"
+    },
+    {
+        "start": 7.28,
+        "end": 7.84,
+        "word": " Alex,"
+    },
+    {
+        "start": 8.3,
+        "end": 8.58,
+        "word": " beep"
+    },
+    {
+        "start": 8.58,
+        "end": 8.84,
+        "word": " boop"
+    },
+    {
+        "start": 8.84,
+        "end": 9.08,
+        "word": " boop"
+    },
+    {
+        "start": 9.08,
+        "end": 9.32,
+        "word": " boop."
+    }
+]
