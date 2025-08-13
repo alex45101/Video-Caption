@@ -45,7 +45,6 @@ def write_json_data(json_filename, data):
 
     with open(json_filename, 'w') as file:
         json.dump(data, file, indent=4)
-    
 
 def convert_mp3_to_mp4(mp4_file):
     """
@@ -79,7 +78,6 @@ def convert_mp3_to_mp4(mp4_file):
         print(f"ffmpeg error: {e}")
         return None
             
-
 def set_raw_output(audio_filename, model_size = 'medium'):
     """
     Transcribes audio using WhisperModel and saves word-level info to a JSON file.
@@ -181,6 +179,7 @@ def combine_words(data, max_chars = 30, max_duration = 2.5, max_gap = 1.5):
         })
     
     return subtitle_lines
+
 
 
 def main():
