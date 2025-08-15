@@ -1,8 +1,8 @@
 [
     {
         "start": 1.6800000000000002,
-        "end": 4.38,
-        "line": "Audio testing, one, two,",
+        "end": 3.4,
+        "line": "Audio testing,",
         "words": [
             {
                 "text": " Audio",
@@ -13,7 +13,14 @@
                 "text": " testing,",
                 "start": 2.54,
                 "end": 3.4
-            },
+            }
+        ]
+    },
+    {
+        "start": 3.8,
+        "end": 4.9,
+        "line": "one, two, three,",
+        "words": [
             {
                 "text": " one,",
                 "start": 3.8,
@@ -23,19 +30,19 @@
                 "text": " two,",
                 "start": 4.04,
                 "end": 4.38
-            }
-        ]
-    },
-    {
-        "start": 4.38,
-        "end": 7.84,
-        "line": "three, hello, this is Alex,",
-        "words": [
+            },
             {
                 "text": " three,",
                 "start": 4.38,
                 "end": 4.9
-            },
+            }
+        ]
+    },
+    {
+        "start": 5.36,
+        "end": 7.28,
+        "line": "hello, this is",
+        "words": [
             {
                 "text": " hello,",
                 "start": 5.36,
@@ -50,19 +57,19 @@
                 "text": " is",
                 "start": 6.66,
                 "end": 7.28
-            },
-            {
-                "text": " Alex,",
-                "start": 7.28,
-                "end": 7.84
             }
         ]
     },
     {
-        "start": 8.3,
-        "end": 9.32,
-        "line": "beep boop boop boop.",
+        "start": 7.28,
+        "end": 8.84,
+        "line": "Alex, beep boop",
         "words": [
+            {
+                "text": " Alex,",
+                "start": 7.28,
+                "end": 7.84
+            },
             {
                 "text": " beep",
                 "start": 8.3,
@@ -72,7 +79,14 @@
                 "text": " boop",
                 "start": 8.58,
                 "end": 8.84
-            },
+            }
+        ]
+    },
+    {
+        "start": 8.84,
+        "end": 9.32,
+        "line": "boop boop.",
+        "words": [
             {
                 "text": " boop",
                 "start": 8.84,

@@ -3,14 +3,14 @@ import json
 import ffmpeg
 import numpy as np
 from faster_whisper import WhisperModel
-from moviepy import TextClip, CompositeVideoClip, ColorClip
+from moviepy.editor import TextClip, CompositeVideoClip, concatenate_videoclips, VideoFileClip, ColorClip
 
 CURR_DIR = os.getcwd()
 JSON_INFO = 'info.json'
 JSON_RAW_OUTPUT = 'output.json'
 JSON_MODIFIED_OUTPUT = 'modifiedOutput.json'
 
-def load_json_data(json_filename):    
+def load_json_data(json_filename):
     """
     Loads JSON data from a file.
 
@@ -20,29 +20,25 @@ def load_json_data(json_filename):
     Returns:
         dict or None: Parsed JSON data if successful, None otherwise.
     """
-
     try:
         with open(json_filename, 'r') as file:
             data = json.load(file)
         return data
     except FileNotFoundError:
-        print(f"Error: '{json_filename}' not found")        
+        print(f"Error: '{json_filename}' not found")
     except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from '{json_filename}'")        
-
+        print(f"Error: Could not decode JSON from '{json_filename}'")
+    # Return None if file not found or JSON is invalid
     return None
 
 def write_json_data(json_filename, data):
     """
-    Write JSON data to a file
+    Writes JSON data to a file.
 
     Args:
         json_filename (str): Path to the JSON file.
-
-    Returns:
-        None
+        data (dict): Data to write to the file.
     """
-
     with open(json_filename, 'w') as file:
         json.dump(data, file, indent=4)
 
@@ -56,22 +52,20 @@ def convert_mp3_to_mp4(mp4_file):
     Returns:
         str or None: Path to the generated MP3 file, or None if failed.
     """
-
     audio_filename = mp4_file.replace('.mp4', '.mp3')
 
+    # Check if the input video file exists
     if not os.path.exists(mp4_file):
-        print(F"Error: '{mp4_file}' not found")
+        print(f"Error: '{mp4_file}' not found")
         return None
 
     try:
+        # Use ffmpeg to extract audio
         video_stream = ffmpeg.input(mp4_file)
-            
         audio = video_stream.audio
-
         audio_stream = ffmpeg.output(audio, audio_filename, acodec='mp3')
         audio_stream = ffmpeg.overwrite_output(audio_stream)
         audio_stream.run()
-        
         print(f"MP3 file generated: {audio_filename}")
         return audio_filename
     except ffmpeg.Error as e:
@@ -180,13 +174,46 @@ def combine_words(data, max_chars = 30, max_duration = 2.5, max_gap = 1.5):
     
     return subtitle_lines
 
+#TODO: Update code each line quick fix
+def create_caption(caption_data, frame_size, font = "Arial", font_size = 120, color = 'white', stroke_color = None, stroke_width = 1, caption_position = None):    
+    caption_clips = []
 
+    frame_width, frame_height = frame_size[0], frame_size[1]    
+
+    if caption_position is None:
+        caption_position = ('center', frame_height * 3/4)    
+
+    for caption in caption_data:
+        full_duration = caption['end'] - caption['start']
+
+        word_clip = TextClip(
+                        caption['line'], 
+                        font = font,         
+                        fontsize = font_size,  
+                        stroke_color = stroke_color,
+                        stroke_width = stroke_width,          
+                        color = color
+                    ).set_start(caption['start']).set_duration(full_duration)
+
+        word_clip = word_clip.set_position(caption_position)        
+
+        caption_clips.append(word_clip)
+
+    return caption_clips
 
 def main():
     """
     Main function to load configuration, process video/audio, and generate subtitles.
     """
 
+    """
+    dummy_clip = TextClip('Dummy Text')
+    available_fonts = dummy_clip.list('font')
+    for font in available_fonts:
+        print(font)
+
+    """    
+    
     data = load_json_data(JSON_INFO)
 
     if data is None:
@@ -200,9 +227,32 @@ def main():
     set_raw_output(audio_filename)
     output_data = load_json_data(JSON_RAW_OUTPUT)
 
-    modified_output_data = combine_words(output_data, subtitle_data['Max Chars'], subtitle_data['Max Duration'], subtitle_data['Max Gap'])
+    modified_output_data = combine_words(
+                                    output_data, 
+                                    subtitle_data['Max Chars'], 
+                                    subtitle_data['Max Duration'], 
+                                    subtitle_data['Max Gap']
+                                )
+    
     write_json_data(JSON_MODIFIED_OUTPUT, modified_output_data)
-   
+
+    modified_output_data = load_json_data(JSON_MODIFIED_OUTPUT)
+
+    input_video = VideoFileClip(video_filename)
+    frame_size = input_video.size
+    
+    out_clips = create_caption(
+                            caption_data = modified_output_data, 
+                            frame_size = frame_size, 
+                            font = subtitle_data['Font'], 
+                            font_size = subtitle_data['Font Size'], 
+                            color = subtitle_data['Color'],
+                            stroke_color = subtitle_data['Stroke Color'],
+                            stroke_width = subtitle_data['Stroke Width']
+                        )        
+
+    final_video = CompositeVideoClip([input_video] + out_clips)
+    final_video.write_videofile('output.mp4')    
 
 if __name__ == '__main__':
     main()
