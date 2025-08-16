@@ -1,0 +1,8 @@
+moviepy==2.0.0.dev2
+ffmpeg-python==0.2.0
+numpy==2.1.2
+faster-whisper==1.2.0
+torch==2.7.1+cu128
+imageio==2.25.1
+imageio-ffmpeg==0.6.0
+pillow==11.0.0
