@@ -5,7 +5,6 @@ import numpy as np
 from faster_whisper import WhisperModel
 from moviepy.editor import TextClip, CompositeVideoClip, concatenate_videoclips, VideoFileClip, ColorClip
 
-CURR_DIR = os.getcwd()
 JSON_INFO = 'info.json'
 JSON_RAW_OUTPUT = 'output.json'
 JSON_MODIFIED_OUTPUT = 'modifiedOutput.json'
@@ -82,7 +81,6 @@ def set_raw_output(audio_filename, model_size = 'medium'):
     Returns:
         None
     """
-
     model = WhisperModel(model_size)
 
     segments, info = model.transcribe(audio_filename, word_timestamps=True)
@@ -107,7 +105,6 @@ def combine_words(data, max_chars = 30, max_duration = 2.5, max_gap = 1.5):
     Returns:
         list: List of subtitle line dictionaries with 'start', 'end', and 'line' keys.
     """
-
     subtitle_lines = []
 
     current_line = {
@@ -174,32 +171,68 @@ def combine_words(data, max_chars = 30, max_duration = 2.5, max_gap = 1.5):
     
     return subtitle_lines
 
-#TODO: Update code each line quick fix
-def create_caption(caption_data, frame_size, font = "Arial", font_size = 120, color = 'white', stroke_color = None, stroke_width = 1, caption_position = None):    
-    caption_clips = []
+def create_caption_clip(caption_word_data, frame_size, font = "Arial", font_size = 120, color = 'white', stroke_color = None, stroke_width = 1, caption_position = None):        
+    """
+    Creates a TextClip for a single caption line with specified styling and timing.
 
-    frame_width, frame_height = frame_size[0], frame_size[1]    
+    Args:
+        caption_word_data (dict): Dictionary containing 'line', 'start', and 'end' keys for the caption.
+        frame_size (tuple): (width, height) of the video frame.
+        font (str): Font name for the caption text.
+        font_size (int): Font size for the caption text.
+        color (str): Text color.
+        stroke_color (str, optional): Outline color for the text.
+        stroke_width (int, optional): Outline thickness for the text.
+        caption_position (tuple, optional): (x, y) position for the caption. Defaults to bottom center.
+
+    Returns:
+        TextClip: The configured caption clip.
+    """
+    frame_width, frame_height = frame_size[0], frame_size[1]
 
     if caption_position is None:
-        caption_position = ('center', frame_height * 3/4)    
+        caption_position = ('center', frame_height * 3/4)
 
+    full_duration = caption_word_data['end'] - caption_word_data['start']
+
+    word_clip = TextClip(
+        caption_word_data['line'],
+        font=font,
+        fontsize=font_size,
+        stroke_color=stroke_color,
+        stroke_width=stroke_width,
+        color=color
+    ).set_start(caption_word_data['start']).set_duration(full_duration)
+
+    word_clip = word_clip.set_position(caption_position)
+
+    return word_clip
+
+def create_caption(caption_data, frame_size, subtitle_data):
+    """
+    Creates a list of TextClips for all caption lines in the video.
+
+    Args:
+        caption_data (list): List of dictionaries, each containing 'line', 'start', and 'end' keys for a caption.
+        frame_size (tuple): (width, height) of the video frame.
+        subtitle_data (dict): Subtitle style and configuration options (font, size, color, etc.).
+
+    Returns:
+        list: List of TextClip objects for each caption line.
+    """
+    word_clips = []
     for caption in caption_data:
-        full_duration = caption['end'] - caption['start']
+        word_clips.append(create_caption_clip(
+            caption_word_data=caption,
+            frame_size=frame_size,
+            font=subtitle_data['Font'],
+            font_size=subtitle_data['Font Size'],
+            color=subtitle_data['Color'],
+            stroke_color=subtitle_data['Stroke Color'],
+            stroke_width=subtitle_data['Stroke Width']
+        ))
+    return word_clips
 
-        word_clip = TextClip(
-                        caption['line'], 
-                        font = font,         
-                        fontsize = font_size,  
-                        stroke_color = stroke_color,
-                        stroke_width = stroke_width,          
-                        color = color
-                    ).set_start(caption['start']).set_duration(full_duration)
-
-        word_clip = word_clip.set_position(caption_position)        
-
-        caption_clips.append(word_clip)
-
-    return caption_clips
 
 def main():
     """
@@ -214,6 +247,7 @@ def main():
 
     """    
     
+    #Get data for subtitle info
     data = load_json_data(JSON_INFO)
 
     if data is None:
@@ -223,10 +257,12 @@ def main():
     subtitle_data = data['Subtitle Info'] 
 
     audio_filename = convert_mp3_to_mp4(video_filename)
-    
+
+    #Output the audio file to JSON and store it
     set_raw_output(audio_filename)
     output_data = load_json_data(JSON_RAW_OUTPUT)
 
+    #Combine words based on subtitle info
     modified_output_data = combine_words(
                                     output_data, 
                                     subtitle_data['Max Chars'], 
@@ -234,23 +270,17 @@ def main():
                                     subtitle_data['Max Gap']
                                 )
     
+    
     write_json_data(JSON_MODIFIED_OUTPUT, modified_output_data)
-
     modified_output_data = load_json_data(JSON_MODIFIED_OUTPUT)
 
+    #Create caption for video
     input_video = VideoFileClip(video_filename)
     frame_size = input_video.size
     
-    out_clips = create_caption(
-                            caption_data = modified_output_data, 
-                            frame_size = frame_size, 
-                            font = subtitle_data['Font'], 
-                            font_size = subtitle_data['Font Size'], 
-                            color = subtitle_data['Color'],
-                            stroke_color = subtitle_data['Stroke Color'],
-                            stroke_width = subtitle_data['Stroke Width']
-                        )        
+    out_clips = create_caption(modified_output_data, frame_size, subtitle_data) 
 
+    #Output the new video
     final_video = CompositeVideoClip([input_video] + out_clips)
     final_video.write_videofile('output.mp4')    
 
