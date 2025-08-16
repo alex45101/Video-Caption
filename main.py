@@ -51,7 +51,7 @@ def convert_mp3_to_mp4(mp4_file):
     Returns:
         str or None: Path to the generated MP3 file, or None if failed.
     """
-    audio_filename = mp4_file.replace('.mp4', '.mp3')
+    audio_file_path = mp4_file.replace('.mp4', '.mp3')
 
     # Check if the input video file exists
     if not os.path.exists(mp4_file):
@@ -62,11 +62,11 @@ def convert_mp3_to_mp4(mp4_file):
         # Use ffmpeg to extract audio
         video_stream = ffmpeg.input(mp4_file)
         audio = video_stream.audio
-        audio_stream = ffmpeg.output(audio, audio_filename, acodec='mp3')
+        audio_stream = ffmpeg.output(audio, audio_file_path, acodec='mp3')
         audio_stream = ffmpeg.overwrite_output(audio_stream)
         audio_stream.run()
-        print(f"MP3 file generated: {audio_filename}")
-        return audio_filename
+        print(f"MP3 file generated: {audio_file_path}")
+        return audio_file_path
     except ffmpeg.Error as e:
         print(f"ffmpeg error: {e}")
         return None
@@ -171,7 +171,7 @@ def combine_words(data, max_chars = 30, max_duration = 2.5, max_gap = 1.5):
     
     return subtitle_lines
 
-def create_caption_clip(caption_word_data, frame_size, font = "Arial", font_size = 120, color = 'white', stroke_color = None, stroke_width = 1, caption_position = None):        
+def create_caption_clip(caption_line_data, video_size, font = "Arial", font_size = 120, color = 'white', stroke_color = None, stroke_width = 1, caption_position = None):        
     """
     Creates a TextClip for a single caption line with specified styling and timing.
 
@@ -188,25 +188,25 @@ def create_caption_clip(caption_word_data, frame_size, font = "Arial", font_size
     Returns:
         TextClip: The configured caption clip.
     """
-    frame_width, frame_height = frame_size[0], frame_size[1]
+    video_width, video_height = video_size[0], video_size[1]
 
     if caption_position is None:
-        caption_position = ('center', frame_height * 3/4)
+        caption_position = ('center', video_height * 3/4)
 
-    full_duration = caption_word_data['end'] - caption_word_data['start']
+    full_duration = caption_line_data['end'] - caption_line_data['start']
 
-    word_clip = TextClip(
-        caption_word_data['line'],
+    caption_clip = TextClip(
+        caption_line_data['line'],
         font=font,
         fontsize=font_size,
         stroke_color=stroke_color,
         stroke_width=stroke_width,
         color=color
-    ).set_start(caption_word_data['start']).set_duration(full_duration)
+    ).set_start(caption_line_data['start']).set_duration(full_duration)
 
-    word_clip = word_clip.set_position(caption_position)
+    caption_clip = caption_clip.set_position(caption_position)
 
-    return word_clip
+    return caption_clip
 
 def create_caption(caption_data, frame_size, subtitle_data):
     """
@@ -220,18 +220,18 @@ def create_caption(caption_data, frame_size, subtitle_data):
     Returns:
         list: List of TextClip objects for each caption line.
     """
-    word_clips = []
+    caption_clips = []
     for caption in caption_data:
-        word_clips.append(create_caption_clip(
-            caption_word_data=caption,
-            frame_size=frame_size,
+        caption_clips.append(create_caption_clip(
+            caption_line_data=caption,
+            video_size=frame_size,
             font=subtitle_data['Font'],
             font_size=subtitle_data['Font Size'],
             color=subtitle_data['Color'],
             stroke_color=subtitle_data['Stroke Color'],
             stroke_width=subtitle_data['Stroke Width']
         ))
-    return word_clips
+    return caption_clips
 
 
 def main():
@@ -246,43 +246,42 @@ def main():
         print(font)
 
     """    
-    
     #Get data for subtitle info
-    data = load_json_data(JSON_INFO)
+    config_data = load_json_data(JSON_INFO)
 
-    if data is None:
+    if config_data is None:
         return
     
-    video_filename = data['Filename']   
-    subtitle_data = data['Subtitle Info'] 
+    video_file_path = config_data['Filename']   
+    subtitle_data = config_data['Subtitle Info'] 
 
-    audio_filename = convert_mp3_to_mp4(video_filename)
+    audio_filename = convert_mp3_to_mp4(video_file_path)
 
     #Output the audio file to JSON and store it
     set_raw_output(audio_filename)
-    output_data = load_json_data(JSON_RAW_OUTPUT)
+    transcription_data = load_json_data(JSON_RAW_OUTPUT)
 
     #Combine words based on subtitle info
-    modified_output_data = combine_words(
-                                    output_data, 
+    processed_subtitles = combine_words(
+                                    transcription_data, 
                                     subtitle_data['Max Chars'], 
                                     subtitle_data['Max Duration'], 
                                     subtitle_data['Max Gap']
                                 )
     
     
-    write_json_data(JSON_MODIFIED_OUTPUT, modified_output_data)
-    modified_output_data = load_json_data(JSON_MODIFIED_OUTPUT)
+    write_json_data(JSON_MODIFIED_OUTPUT, processed_subtitles)
+    processed_subtitles = load_json_data(JSON_MODIFIED_OUTPUT)
 
     #Create caption for video
-    input_video = VideoFileClip(video_filename)
-    frame_size = input_video.size
+    video_clip = VideoFileClip(video_file_path)
+    video_size = video_clip.size
     
-    out_clips = create_caption(modified_output_data, frame_size, subtitle_data) 
+    caption_clips = create_caption(processed_subtitles, video_size, subtitle_data) 
 
     #Output the new video
-    final_video = CompositeVideoClip([input_video] + out_clips)
-    final_video.write_videofile('output.mp4')    
+    final_video_clip = CompositeVideoClip([video_clip] + caption_clips)
+    final_video_clip.write_videofile('output.mp4')    
 
 if __name__ == '__main__':
     main()
