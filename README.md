@@ -11,7 +11,7 @@ A Python project for generating video subtitles using speech-to-text and overlay
 
 ## Requirements
 - Python 3.8+
-- See `requirements-minimal.txt` for dependencies
+- See `requirements.txt` for dependencies
 - [ImageMagick](https://imagemagick.org/) (required by MoviePy for text rendering)
 
 ## Installation
