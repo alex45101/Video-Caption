@@ -5,10 +5,11 @@
         "Max Chars" : 20,
         "Max Duration" : 2.0,
         "Max Gap" : 1.5,
-        "Font" : "Segeo UI Semibold",
-        "Font Size" : 120,
+        "Font" : "Calibri Bold",
+        "Font Size" : 145,
         "Color" : "#fdff7a",
         "Stroke Color" : "black",
-        "Stroke Width" : 2
+        "Stroke Width" : 4,
+        "Shadow" : true
     } 
 }
