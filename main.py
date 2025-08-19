@@ -186,7 +186,7 @@ def blur(clip, sigma):
     """
     return clip.fl_image(lambda image: gaussian_filter(image, sigma=sigma), apply_to=['mask'])
 
-def add_shadow_caption(text, font, font_size, start, duration, position, color, sigma, offset=(2,2)):
+def add_shadow_caption(text, font, font_size, start, duration, position, sigma, offset=(2,2)):
     """
     Creates a shadow TextClip for a caption by offsetting and blurring the text.
 
