@@ -2,6 +2,8 @@ import os
 import json
 import ffmpeg
 import numpy as np
+from itertools import chain
+from scipy.ndimage import gaussian_filter
 from faster_whisper import WhisperModel
 from moviepy.editor import TextClip, CompositeVideoClip, concatenate_videoclips, VideoFileClip, ColorClip
 
@@ -171,7 +173,50 @@ def combine_words(data, max_chars = 30, max_duration = 2.5, max_gap = 1.5):
     
     return subtitle_lines
 
-def create_caption_clip(caption_line_data, video_size, font = "Arial", font_size = 120, color = 'white', stroke_color = None, stroke_width = 1, caption_position = None):        
+def blur(clip, sigma):
+    """
+    Applies a Gaussian blur to a MoviePy clip using scipy's gaussian_filter.
+
+    Args:
+        clip (VideoClip): The MoviePy clip to blur.
+        sigma (float): The standard deviation for Gaussian kernel.
+
+    Returns:
+        VideoClip: The blurred clip.
+    """
+    return clip.fl_image(lambda image: gaussian_filter(image, sigma=sigma), apply_to=['mask'])
+
+def add_shadow_caption(text, font, font_size, start, duration, position, color, sigma, offset=(2,2)):
+    """
+    Creates a shadow TextClip for a caption by offsetting and blurring the text.
+
+    Args:
+        text (str): The caption text.
+        font (str): Font name for the shadow text.
+        font_size (int): Font size for the shadow text.
+        start (float): Start time of the shadow clip.
+        duration (float): Duration of the shadow clip.
+        position (tuple): (x, y) position for the main text.
+        sigma (float): Standard deviation for Gaussian blur.
+        offset (tuple, optional): (x, y) offset for the shadow relative to the main text. Defaults to (2,2).
+
+    Returns:
+        TextClip: The shadow text clip, blurred and offset.
+    """
+    shadow_clip = TextClip(
+        text,
+        font=font,
+        fontsize=font_size,
+        color='black'
+    ).set_start(start).set_duration(duration)
+
+    shadow_pos = ('center' if position[0] == 'center' else position[0] + offset[1], position[1] + offset[1])
+
+    shadow_clip = shadow_clip.set_position(shadow_pos)
+    shadow_clip = blur(shadow_clip, sigma=sigma)
+    return shadow_clip
+
+def create_caption_clip(caption_line_data, video_size, font = "Arial", font_size = 120, color = 'white', stroke_color = None, stroke_width = 1, caption_position = None, shadow = False):        
     """
     Creates a TextClip for a single caption line with specified styling and timing.
 
@@ -184,14 +229,17 @@ def create_caption_clip(caption_line_data, video_size, font = "Arial", font_size
         stroke_color (str, optional): Outline color for the text.
         stroke_width (int, optional): Outline thickness for the text.
         caption_position (tuple, optional): (x, y) position for the caption. Defaults to bottom center.
+        shadow (bool, optional): Whether or not shadows should be generated
 
     Returns:
         TextClip: The configured caption clip.
     """
+    layers = []
+
     video_width, video_height = video_size[0], video_size[1]
 
     if caption_position is None:
-        caption_position = ('center', video_height * 3/4)
+        caption_position = ('center', video_height * 3/4)     
 
     full_duration = caption_line_data['end'] - caption_line_data['start']
 
@@ -206,11 +254,25 @@ def create_caption_clip(caption_line_data, video_size, font = "Arial", font_size
 
     caption_clip = caption_clip.set_position(caption_position)
 
-    return caption_clip
+    if shadow:
+        shadow_clip = add_shadow_caption(
+            text=caption_line_data['line'],
+            font=font,
+            font_size=font_size,
+            start=caption_line_data['start'],
+            duration=full_duration,
+            position=caption_position,
+            sigma=5,            
+            offset=(3,3)
+        )
+        layers.append(shadow_clip)     
+
+    layers.append(caption_clip)
+    return layers
 
 def create_caption(caption_data, frame_size, subtitle_data):
     """
-    Creates a list of TextClips for all caption lines in the video.
+    Creates a list of TextClips layers for all caption lines in the video.
 
     Args:
         caption_data (list): List of dictionaries, each containing 'line', 'start', and 'end' keys for a caption.
@@ -218,20 +280,28 @@ def create_caption(caption_data, frame_size, subtitle_data):
         subtitle_data (dict): Subtitle style and configuration options (font, size, color, etc.).
 
     Returns:
-        list: List of TextClip objects for each caption line.
+        list[list[TextClip]]: List of TextClip layer objects for each caption line.
     """
-    caption_clips = []
+    final_caption_clips = []    
     for caption in caption_data:
-        caption_clips.append(create_caption_clip(
+        caption_clip = create_caption_clip(
             caption_line_data=caption,
             video_size=frame_size,
             font=subtitle_data['Font'],
             font_size=subtitle_data['Font Size'],
             color=subtitle_data['Color'],
             stroke_color=subtitle_data['Stroke Color'],
-            stroke_width=subtitle_data['Stroke Width']
-        ))
-    return caption_clips
+            stroke_width=subtitle_data['Stroke Width'],
+            shadow=subtitle_data['Shadow']
+        )
+
+        for i in range(len(caption_clip)):
+            if i >= len(final_caption_clips):
+                final_caption_clips.append([caption_clip[i]])
+                continue
+
+            final_caption_clips[i].append(caption_clip[i])        
+    return final_caption_clips
 
 
 def main():
@@ -277,11 +347,15 @@ def main():
     video_clip = VideoFileClip(video_file_path)
     video_size = video_clip.size
     
-    caption_clips = create_caption(processed_subtitles, video_size, subtitle_data) 
+    #Get the layers from caption and flatten it out
+    layers = create_caption(processed_subtitles, video_size, subtitle_data)     
+    all_clips = list(chain.from_iterable(layers))
 
     #Output the new video
-    final_video_clip = CompositeVideoClip([video_clip] + caption_clips)
-    final_video_clip.write_videofile('output.mp4')    
+    final_video_clip = CompositeVideoClip([video_clip] + all_clips)
+
+    video_file_path = video_file_path.replace('.mp4', '')
+    final_video_clip.write_videofile(video_file_path + "_output.mp4")    
 
 if __name__ == '__main__':
     main()

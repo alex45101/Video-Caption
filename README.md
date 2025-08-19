@@ -37,7 +37,7 @@ A Python project for generating video subtitles using speech-to-text and overlay
 
 ## Configuration
 - `info.json`: Set subtitle appearance, timing, and video filename.
-- `requirements-minimal.txt`: Minimal dependencies for the project.
+- `requirements.txt`: Minimal dependencies for the project.
 
 ## Example
 ```
@@ -51,7 +51,9 @@ A Python project for generating video subtitles using speech-to-text and overlay
         "Font Size" : 120,
         "Color" : "#fdff7a",
         "Stroke Color" : "black",
-        "Stroke Width" : 2
+        "Stroke Width" : 2,
+         "Shadow" : true,
+        "Shadow Color" : "black"
     }
 }
 ```
